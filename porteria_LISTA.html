@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Control Portería</title>
+
+  <!-- ============================================================
+       CAMBIA ESTA URL por la URL de tu Web App de Apps Script
+       (la obtienes al publicar el script, empieza con https://script.google.com/...)
+  ============================================================ -->
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxEVs-k1ZdOUqWb3NM2bE_D_TOzvGIOe6wy4J3zNnfHMaAmyqfk8HFr1H72PcprqGb_6Q/exec';
+  </script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --verde:     #1D9E75;
+      --verde-dark:#0F6E56;
+      --verde-bg:  #E1F5EE;
+      --rojo:      #E85D24;
+      --rojo-bg:   #FAECE7;
+      --gris-bg:   #F5F5F3;
+      --gris-borde:#E0DED8;
+      --texto:     #1a1a18;
+      --texto-2:   #5e5d58;
+      --blanco:    #ffffff;
+      --radio:     12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--gris-bg);
+      color: var(--texto);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--verde);
+      color: #fff;
+      padding: 14px 18px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-logo { font-size: 11px; opacity: .8; letter-spacing: .5px; text-transform: uppercase; }
+    .header-sync { font-size: 12px; opacity: .7; }
+    .header-title { font-size: 19px; font-weight: 600; }
+    .header-clock { font-size: 13px; opacity: .85; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: var(--blanco);
+      border-bottom: 1px solid var(--gris-borde);
+    }
+    .tab {
+      flex: 1;
+      padding: 12px 8px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--texto-2);
+      border-bottom: 2.5px solid transparent;
+      cursor: pointer;
+      user-select: none;
+      transition: color .15s;
+    }
+    .tab.active {
+      color: var(--verde);
+      border-bottom-color: var(--verde);
+      font-weight: 500;
+    }
+
+    /* ── Contenido ── */
+    .content { flex: 1; display: flex; flex-direction: column; }
+    .pane { display: none; flex: 1; flex-direction: column; gap: 14px; padding: 16px; }
+    .pane.active { display: flex; }
+
+    /* ── Inputs y selects ── */
+    label.field-label {
+      font-size: 11px;
+      color: var(--texto-2);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 5px;
+      display: block;
+    }
+    .plate-wrap { display: flex; gap: 8px; }
+    .plate-input {
+      flex: 1;
+      font-size: 24px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 3px;
+      padding: 12px;
+      border: 2px solid var(--gris-borde);
+      border-radius: var(--radio);
+      background: var(--blanco);
+      color: var(--texto);
+      text-transform: uppercase;
+      transition: border-color .15s;
+    }
+    .plate-input:focus { border-color: var(--verde); outline: none; }
+    .btn-clear {
+      background: none;
+      border: 1px solid var(--gris-borde);
+      border-radius: var(--radio);
+      padding: 0 14px;
+      font-size: 18px;
+      color: var(--texto-2);
+      cursor: pointer;
+    }
+
+    .sugg-row { display: flex; flex-wrap: wrap; gap: 7px; min-height: 0; }
+    .sugg-chip {
+      background: var(--blanco);
+      border: 1px solid var(--gris-borde);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .sugg-chip:active { border-color: var(--verde); background: var(--verde-bg); }
+
+    .field-group { display: flex; flex-direction: column; gap: 5px; }
+    select.field-sel, input.field-inp {
+      border: 1px solid var(--gris-borde);
+      border-radius: var(--radio);
+      padding: 12px 14px;
+      font-size: 15px;
+      background: var(--blanco);
+      color: var(--texto);
+      width: 100%;
+      appearance: none;
+    }
+    select.field-sel:focus, input.field-inp:focus { border-color: var(--verde); outline: none; }
+
+    /* ── Status box ── */
+    .status {
+      background: var(--gris-bg);
+      border: 1px solid var(--gris-borde);
+      border-radius: var(--radio);
+      padding: 12px 14px;
+      font-size: 14px;
+      color: var(--texto-2);
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status.ok    { background: var(--verde-bg); border-color: #9FE1CB; color: var(--verde-dark); }
+    .status.warn  { background: #FAEEDA; border-color: #FAC775; color: #633806; }
+    .status.error { background: var(--rojo-bg);  border-color: #F0997B; color: #4A1B0C; }
+
+    /* ── Camión en planta (card de resumen) ── */
+    .in-plant-card {
+      background: var(--verde-bg);
+      border: 1px solid #9FE1CB;
+      border-radius: var(--radio);
+      padding: 14px 16px;
+      display: none;
+    }
+    .in-plant-plate { font-size: 26px; font-weight: 700; letter-spacing: 3px; color: var(--verde-dark); }
+    .in-plant-info  { font-size: 13px; color: #085041; margin-top: 4px; }
+
+    /* ── Botones principales ── */
+    .btn-entrada, .btn-salida, .btn-nuevo {
+      width: 100%;
+      border: none;
+      border-radius: var(--radio);
+      padding: 16px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: .2px;
+    }
+    .btn-entrada { background: var(--verde); color: #fff; }
+    .btn-entrada:active { background: var(--verde-dark); }
+    .btn-salida  { background: var(--rojo);  color: #fff; display: none; }
+    .btn-salida:active  { background: #993C1D; }
+    .btn-nuevo {
+      background: none;
+      border: 1px solid var(--gris-borde);
+      color: var(--texto-2);
+      font-weight: 400;
+      font-size: 15px;
+      padding: 13px;
+    }
+
+    /* ── Spinner de carga ── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Listas (en planta / recientes) ── */
+    .list-item {
+      background: var(--blanco);
+      border: 1px solid var(--gris-borde);
+      border-radius: var(--radio);
+      padding: 13px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .list-plate { font-size: 16px; font-weight: 600; letter-spacing: 1.5px; }
+    .list-sub   { font-size: 12px; color: var(--texto-2); margin-top: 3px; }
+    .badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge.en  { background: var(--verde-bg); color: var(--verde-dark); }
+    .badge.sal { background: var(--rojo-bg);  color: #993C1D; }
+
+    .empty-msg {
+      text-align: center;
+      color: var(--texto-2);
+      font-size: 14px;
+      padding: 30px 0;
+    }
+
+    /* ── Navegador inferior (portero / turno) ── */
+    .bottom-bar {
+      background: var(--blanco);
+      border-top: 1px solid var(--gris-borde);
+      padding: 10px 18px;
+      font-size: 12px;
+      color: var(--texto-2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .portero-name { font-weight: 500; color: var(--texto); }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <span class="header-logo">Control portería</span>
+      <span class="header-sync" id="syncStatus">✓ conectado</span>
+    </div>
+    <div class="header-title">Registro de camiones</div>
+    <div class="header-clock" id="clock">—</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-tab="0" onclick="setTab(0)">Registrar</div>
+    <div class="tab"        data-tab="1" onclick="setTab(1)">En planta</div>
+    <div class="tab"        data-tab="2" onclick="setTab(2)">Recientes</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── TAB 0: Registrar ── -->
+    <div class="pane active" id="pane0">
+
+      <div>
+        <label class="field-label">Patente del camión</label>
+        <div class="plate-wrap">
+          <input class="plate-input" id="plate" maxlength="8"
+                 placeholder="BCDF12" autocomplete="off" autocorrect="off"
+                 oninput="onPlateInput(this.value)" />
+          <button class="btn-clear" onclick="limpiarFormulario()">✕</button>
+        </div>
+        <div class="sugg-row" id="suggs" style="margin-top:9px"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tipo de carga</label>
+        <select class="field-sel" id="cargo">
+          <option value="">— seleccionar —</option>
+          <option>Uva de mesa</option>
+          <option>Arándano</option>
+          <option>Cereza</option>
+          <option>Kiwi</option>
+          <option>Ciruela</option>
+          <option>Durazno</option>
+          <option>Otra fruta</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Conductor (opcional)</label>
+        <input class="field-inp" id="conductor" placeholder="Nombre del conductor" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Portero</label>
+        <input class="field-inp" id="portero" placeholder="Tu nombre" />
+      </div>
+
+      <div class="status" id="statusBox">Ingresa la patente para comenzar</div>
+
+      <div class="in-plant-card" id="inPlantCard">
+        <div class="in-plant-plate" id="inPlantPlate">—</div>
+        <div class="in-plant-info"  id="inPlantInfo">—</div>
+      </div>
+
+      <button class="btn-entrada" id="btnEntrada" onclick="registrarEntrada()">
+        ↓ Registrar entrada
+      </button>
+      <button class="btn-salida" id="btnSalida" onclick="registrarSalida()">
+        ↑ Registrar salida
+      </button>
+      <button class="btn-nuevo" onclick="limpiarFormulario()">+ Nuevo registro</button>
+
+    </div>
+
+    <!-- ── TAB 1: En planta ── -->
+    <div class="pane" id="pane1">
+      <label class="field-label">Camiones en planta ahora</label>
+      <div id="listEnPlanta"><div class="empty-msg">Cargando...</div></div>
+    </div>
+
+    <!-- ── TAB 2: Recientes ── -->
+    <div class="pane" id="pane2">
+      <label class="field-label">Últimos registros del día</label>
+      <div id="listRecientes"><div class="empty-msg">Cargando...</div></div>
+    </div>
+
+  </div>
+
+  <!-- Pie portero -->
+  <div class="bottom-bar">
+    <span>Portero: <span class="portero-name" id="porteroDisplay">—</span></span>
+    <span id="fechaDisplay">—</span>
+  </div>
+
+
+  <script>
+    // ───────────────────────────────────────────
+    //  Estado local (caché mientras no hay red)
+    // ───────────────────────────────────────────
+    let camionesConocidos = JSON.parse(localStorage.getItem('camionesConocidos') || '[]');
+    let enPlantaLocal     = JSON.parse(localStorage.getItem('enPlantaLocal')     || '{}');
+    let pendientes        = JSON.parse(localStorage.getItem('pendientes')         || '[]');
+
+    // ───────────────────────────────────────────
+    //  Reloj
+    // ───────────────────────────────────────────
+    function actualizarReloj() {
+      const d = new Date();
+      const h = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+      const f = d.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+      document.getElementById('clock').textContent = h + ' · ' + f;
+      document.getElementById('fechaDisplay').textContent = f;
+    }
+    actualizarReloj();
+    setInterval(actualizarReloj, 30000);
+
+    // Mostrar nombre portero al escribirlo
+    document.getElementById('portero').addEventListener('input', function() {
+      document.getElementById('porteroDisplay').textContent = this.value || '—';
+      localStorage.setItem('nombrePortero', this.value);
+    });
+    // Restaurar nombre guardado
+    const nombreGuardado = localStorage.getItem('nombrePortero');
+    if (nombreGuardado) {
+      document.getElementById('portero').value = nombreGuardado;
+      document.getElementById('porteroDisplay').textContent = nombreGuardado;
+    }
+
+    // ───────────────────────────────────────────
+    //  Navegación por tabs
+    // ───────────────────────────────────────────
+    function setTab(i) {
+      document.querySelectorAll('.tab').forEach((t, j) => t.classList.toggle('active', i === j));
+      document.querySelectorAll('.pane').forEach((p, j) => p.classList.toggle('active', i === j));
+      if (i === 1) cargarEnPlanta();
+      if (i === 2) cargarRecientes();
+    }
+
+    // ───────────────────────────────────────────
+    //  Sugerencias de patente
+    // ───────────────────────────────────────────
+    function onPlateInput(val) {
+      val = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      document.getElementById('plate').value = val;
+      const suggs = document.getElementById('suggs');
+      suggs.innerHTML = '';
+
+      if (val.length >= 2) {
+        camionesConocidos
+          .filter(p => p.startsWith(val) && p !== val)
+          .slice(0, 5)
+          .forEach(p => {
+            const chip = document.createElement('div');
+            chip.className = 'sugg-chip';
+            chip.textContent = p;
+            chip.onclick = () => { document.getElementById('plate').value = p; suggs.innerHTML = ''; checkPlate(p); };
+            suggs.appendChild(chip);
+          });
+      }
+      if (val.length >= 6) checkPlate(val);
+    }
+
+    function checkPlate(val) {
+      const sb   = document.getElementById('statusBox');
+      const card = document.getElementById('inPlantCard');
+      const bE   = document.getElementById('btnEntrada');
+      const bS   = document.getElementById('btnSalida');
+
+      if (enPlantaLocal[val]) {
+        const datos = enPlantaLocal[val];
+        const mins  = Math.round((Date.now() - datos.ts) / 60000);
+        card.style.display = 'block';
+        document.getElementById('inPlantPlate').textContent = val;
+        document.getElementById('inPlantInfo').textContent  =
+          'Entró a las ' + datos.hora + ' · ' + mins + ' min en planta';
+        sb.className = 'status'; sb.textContent = '';
+        bE.style.display = 'none'; bS.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+        const conocido = camionesConocidos.includes(val);
+        sb.className = 'status ok';
+        sb.textContent = conocido ? '✓ Camión conocido — listo para registrar' : '⚠ Patente nueva — se guardará en el sistema';
+        bE.style.display = 'block'; bS.style.display = 'none';
+      }
+    }
+
+    // ───────────────────────────────────────────
+    //  Llamadas a la API (con fallback offline)
+    // ───────────────────────────────────────────
+    async function llamarAPI(body) {
+      const sb = document.getElementById('syncStatus');
+      sb.textContent = '⟳ sincronizando';
+      try {
+        const r = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify(body)
+        });
+        const data = await r.json();
+        sb.textContent = '✓ conectado';
+        return data;
+      } catch (e) {
+        sb.textContent = '⚠ sin red';
+        throw e;
+      }
+    }
+
+    // ───────────────────────────────────────────
+    //  Registrar ENTRADA
+    // ───────────────────────────────────────────
+    async function registrarEntrada() {
+      const patente  = document.getElementById('plate').value.trim();
+      const cargo    = document.getElementById('cargo').value;
+      const conductor= document.getElementById('conductor').value;
+      const portero  = document.getElementById('portero').value;
+      const bE       = document.getElementById('btnEntrada');
+      const sb       = document.getElementById('statusBox');
+
+      if (patente.length < 5) { mostrarStatus('error', '⚠ Ingresa una patente válida (mín. 5 caracteres)'); return; }
+
+      bE.innerHTML = '<span class="spinner"></span> Guardando...';
+      bE.disabled = true;
+
+      // Guardar localmente siempre (por si no hay red)
+      const ahora = new Date();
+      const hora  = ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      enPlantaLocal[patente] = { hora, ts: Date.now(), cargo, conductor };
+      if (!camionesConocidos.includes(patente)) camionesConocidos.push(patente);
+      persistirLocal();
+
+      try {
+        await llamarAPI({ accion: 'entrada', patente, tipoCarga: cargo, conductor, portero });
+        mostrarStatus('ok', '✓ Entrada registrada a las ' + hora);
+      } catch (e) {
+        // Guardado offline — se sincronizará cuando haya red
+        pendientes.push({ accion: 'entrada', patente, tipoCarga: cargo, conductor, portero, hora });
+        persistirLocal();
+        mostrarStatus('warn', '⚠ Sin red — entrada guardada localmente. Se sincronizará al reconectar.');
+      }
+
+      document.getElementById('inPlantCard').style.display = 'block';
+      document.getElementById('inPlantPlate').textContent = patente;
+      document.getElementById('inPlantInfo').textContent  = 'Entró a las ' + hora + ' · 0 min en planta';
+      bE.style.display = 'none';
+      document.getElementById('btnSalida').style.display = 'block';
+      bE.innerHTML = '↓ Registrar entrada';
+      bE.disabled = false;
+    }
+
+    // ───────────────────────────────────────────
+    //  Registrar SALIDA
+    // ───────────────────────────────────────────
+    async function registrarSalida() {
+      const patente = document.getElementById('plate').value.trim();
+      const portero = document.getElementById('portero').value;
+      const bS = document.getElementById('btnSalida');
+      const sb = document.getElementById('statusBox');
+
+      if (!enPlantaLocal[patente]) { mostrarStatus('error', '⚠ No hay entrada registrada para esta patente'); return; }
+
+      bS.innerHTML = '<span class="spinner"></span> Guardando...';
+      bS.disabled = true;
+
+      const datos = enPlantaLocal[patente];
+      const mins  = Math.round((Date.now() - datos.ts) / 60000);
+      const hora  = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      delete enPlantaLocal[patente];
+      persistirLocal();
+
+      try {
+        await llamarAPI({ accion: 'salida', patente, portero });
+        mostrarStatus('ok', '✓ Salida registrada · Tiempo en planta: ' + mins + ' min');
+      } catch (e) {
+        pendientes.push({ accion: 'salida', patente, portero, hora });
+        persistirLocal();
+        mostrarStatus('warn', '⚠ Sin red — salida guardada localmente (' + mins + ' min).');
+      }
+
+      document.getElementById('inPlantCard').style.display = 'none';
+      bS.style.display = 'none';
+      document.getElementById('btnEntrada').style.display = 'block';
+      bS.innerHTML = '↑ Registrar salida';
+      bS.disabled = false;
+    }
+
+    // ───────────────────────────────────────────
+    //  Cargar listas
+    // ───────────────────────────────────────────
+    async function cargarEnPlanta() {
+      const el = document.getElementById('listEnPlanta');
+      el.innerHTML = '<div class="empty-msg">Cargando...</div>';
+      try {
+        const data = await llamarAPI({ accion: 'en_planta' });
+        if (!data.camiones || data.camiones.length === 0) {
+          el.innerHTML = '<div class="empty-msg">Sin camiones en planta ahora</div>';
+          return;
+        }
+        el.innerHTML = '';
+        data.camiones.forEach(c => {
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          div.innerHTML = `
+            <div>
+              <div class="list-plate">${c.patente}</div>
+              <div class="list-sub">${c.tipoCarga || 'Carga no indicada'} · Desde ${c.horaEntrada}</div>
+            </div>
+            <span class="badge en">${c.minutosEnPlanta} min</span>`;
+          el.appendChild(div);
+        });
+      } catch (e) {
+        // Mostrar desde caché local
+        const keys = Object.keys(enPlantaLocal);
+        if (!keys.length) { el.innerHTML = '<div class="empty-msg">Sin conexión · Sin datos locales</div>'; return; }
+        el.innerHTML = '';
+        keys.forEach(p => {
+          const d = enPlantaLocal[p];
+          const mins = Math.round((Date.now() - d.ts) / 60000);
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          div.innerHTML = `
+            <div>
+              <div class="list-plate">${p}</div>
+              <div class="list-sub">${d.cargo || '—'} · Desde ${d.hora} <em>(local)</em></div>
+            </div>
+            <span class="badge en">${mins} min</span>`;
+          el.appendChild(div);
+        });
+      }
+    }
+
+    async function cargarRecientes() {
+      const el = document.getElementById('listRecientes');
+      el.innerHTML = '<div class="empty-msg">Cargando...</div>';
+      try {
+        const data = await llamarAPI({ accion: 'recientes' });
+        if (!data.registros || data.registros.length === 0) {
+          el.innerHTML = '<div class="empty-msg">Sin registros hoy</div>'; return;
+        }
+        el.innerHTML = '';
+        data.registros.forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          const badge = r.estado === 'EN PLANTA'
+            ? '<span class="badge en">En planta</span>'
+            : `<span class="badge sal">Salió · ${r.minutos} min</span>`;
+          div.innerHTML = `
+            <div>
+              <div class="list-plate">${r.patente}</div>
+              <div class="list-sub">${r.tipoCarga || '—'} · Entrada ${r.horaEntrada}${r.horaSalida ? ' · Salida ' + r.horaSalida : ''}</div>
+            </div>
+            ${badge}`;
+          el.appendChild(div);
+        });
+      } catch (e) {
+        el.innerHTML = '<div class="empty-msg">Sin conexión — revisa la red</div>';
+      }
+    }
+
+    // ───────────────────────────────────────────
+    //  Cargar camiones conocidos al iniciar
+    // ───────────────────────────────────────────
+    async function cargarCamionesConocidos() {
+      try {
+        const data = await llamarAPI({ accion: 'lista_camiones' });
+        if (data.camiones) {
+          camionesConocidos = data.camiones;
+          persistirLocal();
+        }
+      } catch (e) { /* usar caché local */ }
+    }
+
+    // ───────────────────────────────────────────
+    //  Sincronizar pendientes offline
+    // ───────────────────────────────────────────
+    async function sincronizarPendientes() {
+      if (!pendientes.length) return;
+      const copiaPendientes = [...pendientes];
+      pendientes = [];
+      persistirLocal();
+      for (const p of copiaPendientes) {
+        try {
+          await llamarAPI(p);
+        } catch (e) {
+          pendientes.push(p); // volver a encolar si falla
+          persistirLocal();
+          break;
+        }
+      }
+    }
+
+    // ───────────────────────────────────────────
+    //  Utilidades
+    // ───────────────────────────────────────────
+    function mostrarStatus(tipo, msg) {
+      const sb = document.getElementById('statusBox');
+      sb.className = 'status ' + tipo;
+      sb.textContent = msg;
+    }
+
+    function limpiarFormulario() {
+      document.getElementById('plate').value = '';
+      document.getElementById('suggs').innerHTML = '';
+      document.getElementById('cargo').value = '';
+      document.getElementById('conductor').value = '';
+      document.getElementById('inPlantCard').style.display = 'none';
+      document.getElementById('btnEntrada').style.display = 'block';
+      document.getElementById('btnSalida').style.display = 'none';
+      mostrarStatus('', 'Ingresa la patente para comenzar');
+    }
+
+    function persistirLocal() {
+      localStorage.setItem('camionesConocidos', JSON.stringify(camionesConocidos));
+      localStorage.setItem('enPlantaLocal',     JSON.stringify(enPlantaLocal));
+      localStorage.setItem('pendientes',         JSON.stringify(pendientes));
+    }
+
+    // ───────────────────────────────────────────
+    //  Inicio
+    // ───────────────────────────────────────────
+    window.addEventListener('load', () => {
+      cargarCamionesConocidos();
+      sincronizarPendientes();
+    });
+
+    window.addEventListener('online', () => {
+      document.getElementById('syncStatus').textContent = '✓ conectado';
+      sincronizarPendientes();
+    });
+    window.addEventListener('offline', () => {
+      document.getElementById('syncStatus').textContent = '⚠ sin red';
+    });
+  </script>
+
+</body>
+</html>
